@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import SkeletonLoader from "./components/SkeletonLoader";
+import Login from "./components/Login";
 
 export default function Home() {
   const [loading, setLoading] = useState<boolean>(false)
@@ -12,8 +13,11 @@ export default function Home() {
 
   return (
     <main className="flex flex-col min-h-screen items-center justify-start">
-      <div className="flex flex-col lg:flex-row justify-start w-full md:h-[500px] h-[800px] lg:h-[600px]">
+      {/* <div className="flex flex-col lg:flex-row justify-start w-full md:h-[500px] h-[800px] lg:h-[600px]">
         <h3>Home connect-us</h3>
+      </div> */}
+      <div className="flex justify-center items-center h-screen">
+        <Login></Login>
       </div>
     </main>
   );

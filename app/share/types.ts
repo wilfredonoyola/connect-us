@@ -1,9 +1,8 @@
-export interface ExampleType {
-    property1: string;
+export interface User {
+  id: string;
+  nickname: string;
+  avatar: string;
 }
-
-
-
   
 
   

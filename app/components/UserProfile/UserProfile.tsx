@@ -1,21 +1,28 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { io } from 'socket.io-client';
+import { getNickname, getAvatar, clearStorage } from '../../utils/storage';
+
+const socket = io({
+  path: '/api/socket',
+});
 
 const UserProfile: React.FC = () => {
   const router = useRouter();
-  const [nickname, setNickname] = useState<string | null>(null);
-  const [avatar, setAvatar] = useState<string | null>(null);
+  const [nickname, setNicknameState] = useState<string | null>(null);
+  const [avatar, setAvatarState] = useState<string | null>(null);
 
   useEffect(() => {
-    setNickname(localStorage.getItem('nickname'));
-    setAvatar(localStorage.getItem('avatar'));
+    setNicknameState(getNickname());
+    setAvatarState(getAvatar());
   }, []);
 
   const handleLogout = () => {
-    localStorage.removeItem('nickname');
-    localStorage.removeItem('avatar');
+    socket.emit('setStatus', 'busy');
+    clearStorage();
+    socket.emit('logout');
     router.push('/');
   };
 

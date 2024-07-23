@@ -2,59 +2,96 @@
 
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { User } from 'app/share/types';
+import { io } from 'socket.io-client';
+import { getNickname, getAvatar } from '../../utils/storage';
 
-// Generate a fake list of users for testing
-const fakeUsers: User[] = [
-  { id: '1', nickname: 'User1', avatar: 'https://randomuser.me/api/portraits/men/1.jpg', status: 'available' },
-  { id: '2', nickname: 'User2', avatar: 'https://randomuser.me/api/portraits/women/2.jpg', status: 'busy' },
-  { id: '3', nickname: 'User3', avatar: 'https://randomuser.me/api/portraits/men/3.jpg', status: 'available' },
-  { id: '4', nickname: 'User4', avatar: 'https://randomuser.me/api/portraits/women/4.jpg', status: 'busy' },
-];
+const socket = io({
+  path: '/api/socket',
+});
+
+interface User {
+  id: string;
+  nickname: string;
+  avatar: string;
+  status: 'available' | 'busy';
+}
 
 const UserList: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
   const router = useRouter();
 
   useEffect(() => {
-    // Use the fake users instead of real-time connection
-    setUsers(fakeUsers);
-  }, []);
+    const nickname = getNickname();
+    const avatar = getAvatar();
+
+    if (!nickname || !avatar) {
+      router.push('/');
+      return;
+    }
+
+    const updateUserList = (data: User[]) => {
+      setUsers(data.filter(user => user.id !== socket.id));
+    };
+
+    socket.on('users', updateUserList);
+
+    const user = {
+      id: socket.id,
+      nickname,
+      avatar,
+      status: 'available',
+    };
+
+    socket.on('connect', () => {
+      socket.emit('login', user);
+    });
+
+    return () => {
+      socket.off('users', updateUserList);
+    };
+  }, [router]);
 
   const handleCall = (user: User) => {
-    if (user.status === 'available') {
-      router.push(`/room/${user.id}`);
-    }
-  };
-
-  const handleLogout = () => {
-    localStorage.removeItem('nickname');
-    localStorage.removeItem('avatar');
-    router.push('/');
+    const nickname = getNickname();
+    const avatar = getAvatar();
+    socket.emit('callUser', {
+      targetUserId: user.id,
+      caller: {
+        id: socket.id,
+        nickname,
+        avatar,
+      },
+    });
+    router.push(`/room/${user.id}`);
   };
 
   return (
     <div className="bg-white p-6 rounded-lg shadow-md">
-      <ul>
-        {users.map((user) => (
-          <li key={user.id} className="flex items-center justify-between mb-4">
-            <div className="flex items-center">
-              <img src={user.avatar} alt={user.nickname} width="50" className="rounded-full mr-4" />
-              <span className="font-semibold">{user.nickname}</span>
-              <span className={`ml-2 text-sm ${user.status === 'available' ? 'text-green-500' : 'text-red-500'}`}>
-                {user.status === 'available' ? 'Available' : 'In Call'}
-              </span>
-            </div>
-            <button 
-              onClick={() => handleCall(user)} 
-              className={`p-2 rounded ${user.status === 'available' ? 'bg-green-500 text-white' : 'bg-gray-500 text-white cursor-not-allowed'}`}
-              disabled={user.status !== 'available'}
-            >
-              Call
-            </button>
-          </li>
-        ))}
-      </ul>
+      <h2 className="text-2xl font-bold mb-4 text-slate-900">Users</h2>
+      {users.length === 0 ? (
+        <p className="text-gray-500">No contacts available.</p>
+      ) : (
+        <ul>
+          {users.map((user) => (
+            <li key={user.id} className="flex items-center justify-between mb-4">
+              <div className="flex items-center">
+                <img src={user.avatar} alt={user.nickname} width="50" className="rounded-full mr-4" />
+                <span>{user.nickname}</span>
+                <span className={`ml-2 ${user.status === 'available' ? 'text-green-500' : 'text-red-500'}`}>
+                  {user.status}
+                </span>
+              </div>
+              <button 
+                onClick={() => handleCall(user)} 
+                className={`bg-${user.status === 'available' ? 'green' : 'gray'}-500 text-white p-2 rounded`}
+                disabled={user.status !== 'available'}
+              >
+                Call
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 };

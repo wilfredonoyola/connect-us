@@ -1,51 +1,40 @@
 'use client';
 
-import React, { useRef, useEffect, useState } from 'react';
-import Peer from 'peerjs';
+import React, { useEffect, useRef, useState } from 'react';
+import Peer, { MediaConnection } from 'peerjs';
+import VideoStream from '../VideoStream';
+import Controls from '../Controls';
+import IncomingCallPopup from '../IncomingCallPopup';
+import CallStatus from '../CallStatus';
 
 interface VideoCallProps {
-  targetUser: { peerId: string; nickname: string };
+  targetUser: { peerId: string; nickname: string; avatar: string };
 }
 
 const VideoCall: React.FC<VideoCallProps> = ({ targetUser }) => {
   const [stream, setStream] = useState<MediaStream | null>(null);
-  const myVideoRef = useRef<HTMLVideoElement>(null);
-  const userVideoRef = useRef<HTMLVideoElement>(null);
+  const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
+  const [incomingCall, setIncomingCall] = useState<MediaConnection | null>(null);
+  const [outgoingCall, setOutgoingCall] = useState<MediaConnection | null>(null);
+  const [isInCall, setIsInCall] = useState<boolean>(false);
+  const [isCalling, setIsCalling] = useState<boolean>(false);
+  const [isCameraOn, setIsCameraOn] = useState<boolean>(false);
+  const [isMicrophoneOn, setIsMicrophoneOn] = useState<boolean>(false);
+  const [callType, setCallType] = useState<'audio' | 'video-audio'>('video-audio');
+
   const peerInstance = useRef<Peer | null>(null);
 
   useEffect(() => {
-    // Initialize Peer instance only once
     if (!peerInstance.current) {
       peerInstance.current = new Peer();
     }
-
-    const getUserMedia = async () => {
-      try {
-        const mediaStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-        if (myVideoRef.current) {
-          myVideoRef.current.srcObject = mediaStream;
-        }
-        setStream(mediaStream);
-      } catch (error) {
-        console.error('Error accessing media devices.', error);
-      }
-    };
-
-    getUserMedia();
 
     peerInstance.current.on('open', (id) => {
       console.log('PeerJS connected with ID:', id);
     });
 
-    peerInstance.current.on('call', (call) => {
-      if (stream) {
-        call.answer(stream);
-        call.on('stream', (remoteStream) => {
-          if (userVideoRef.current) {
-            userVideoRef.current.srcObject = remoteStream;
-          }
-        });
-      }
+    peerInstance.current.on('call', (call: MediaConnection) => {
+      setIncomingCall(call);
     });
 
     return () => {
@@ -53,30 +42,162 @@ const VideoCall: React.FC<VideoCallProps> = ({ targetUser }) => {
     };
   }, []);
 
-  const callUser = () => {
-    if (peerInstance.current && stream) {
-      const call = peerInstance.current.call(targetUser.peerId, stream);
-      call.on('stream', (remoteStream) => {
-        if (userVideoRef.current) {
-          userVideoRef.current.srcObject = remoteStream;
-        }
+  const getUserMedia = async (constraints: MediaStreamConstraints): Promise<MediaStream | null> => {
+    try {
+      const mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
+      setStream(mediaStream);
+      return mediaStream;
+    } catch (error) {
+      console.error('Error accessing media devices.', error);
+      return null;
+    }
+  };
+
+  const callUser = async (type: 'audio' | 'video-audio') => {
+    setCallType(type);
+    const mediaStream = await getUserMedia(type === 'video-audio' ? { video: true, audio: true } : { audio: true });
+    if (mediaStream && peerInstance.current) {
+      const call = peerInstance.current.call(targetUser.peerId, mediaStream);
+      if (call) {
+        setOutgoingCall(call);
+        setIsCalling(true);
+        call.on('stream', (remoteStream: MediaStream) => {
+          setRemoteStream(remoteStream);
+          setIsInCall(true);
+          setIsCalling(false);
+        });
+        call.on('close', () => {
+          setIsInCall(false);
+          setRemoteStream(null);
+          setOutgoingCall(null);
+          setIsCalling(false);
+        });
+      } else {
+        console.error('Failed to initiate call.');
+      }
+    } else {
+      console.error('Media stream or peer instance is not available.');
+    }
+  };
+
+  const answerCall = async () => {
+    const mediaStream = await getUserMedia(callType === 'video-audio' ? { video: true, audio: true } : { audio: true });
+    if (incomingCall && mediaStream) {
+      incomingCall.answer(mediaStream);
+      incomingCall.on('stream', (remoteStream: MediaStream) => {
+        setRemoteStream(remoteStream);
+        setIsInCall(true);
       });
+      setIncomingCall(null);
+    }
+  };
+
+  const declineCall = () => {
+    if (incomingCall) {
+      incomingCall.close();
+      setIncomingCall(null);
+    }
+  };
+
+  const cancelCall = () => {
+    if (outgoingCall) {
+      outgoingCall.close();
+      setOutgoingCall(null);
+      setIsCalling(false);
+    }
+  };
+
+  const endCall = () => {
+    if (stream) {
+      stream.getTracks().forEach(track => track.stop());
+    }
+    if (peerInstance.current) {
+      peerInstance.current.destroy();
+    }
+    setStream(null);
+    setRemoteStream(null);
+    setIsInCall(false);
+    setIsCalling(false);
+  };
+
+  const toggleCamera = async () => {
+    if (isCameraOn) {
+      stream?.getVideoTracks().forEach(track => track.stop());
+      setIsCameraOn(false);
+    } else {
+      const mediaStream = await getUserMedia({ video: true, audio: isMicrophoneOn });
+      if (mediaStream) {
+        if (stream) {
+          stream.addTrack(mediaStream.getVideoTracks()[0]);
+        } else {
+          setStream(mediaStream);
+        }
+        setIsCameraOn(true);
+      }
+    }
+  };
+
+  const toggleMicrophone = async () => {
+    if (isMicrophoneOn) {
+      stream?.getAudioTracks().forEach(track => track.stop());
+      setIsMicrophoneOn(false);
+    } else {
+      const mediaStream = await getUserMedia({ audio: true, video: isCameraOn });
+      if (mediaStream) {
+        if (stream) {
+          stream.addTrack(mediaStream.getAudioTracks()[0]);
+        } else {
+          setStream(mediaStream);
+        }
+        setIsMicrophoneOn(true);
+      }
     }
   };
 
   return (
-    <div className="bg-white p-6 rounded-lg shadow-md">
-      <h2 className="text-2xl font-bold mb-4">Video Call with {targetUser.nickname}</h2>
-      <div className="flex flex-col items-center">
-        <video ref={myVideoRef} autoPlay muted className="w-full mb-4"></video>
-        <video ref={userVideoRef} autoPlay className="w-full mb-4"></video>
-        <button 
-          onClick={callUser} 
-          className="bg-blue-500 text-white p-2 rounded"
-        >
-          Call {targetUser.nickname}
-        </button>
+    <div className="fixed inset-0 bg-black flex flex-col items-center justify-center p-12">
+      <div className="relative w-full h-full flex gap-4">
+        <div className="flex-1 flex items-center  justify-center">
+          <VideoStream
+            stream={stream}
+            isLocal={true}
+            isCameraOn={isCameraOn}
+            avatar={targetUser.avatar}
+            nickname="You"
+          />
+        </div>
+        <div className="flex-1 flex items-center justify-center">
+          <VideoStream
+            stream={remoteStream}
+            isLocal={false}
+            isCameraOn={!!remoteStream}
+            avatar={targetUser.avatar}
+            nickname={targetUser.nickname}
+          />
+        </div>
       </div>
+      <Controls
+        isCameraOn={isCameraOn}
+        isMicrophoneOn={isMicrophoneOn}
+        isInCall={isInCall}
+        isCalling={isCalling}
+        toggleCamera={toggleCamera}
+        toggleMicrophone={toggleMicrophone}
+        callUser={callUser}
+        cancelCall={cancelCall}
+        endCall={endCall}
+        targetUser={targetUser}
+      />
+      <IncomingCallPopup
+        incomingCall={incomingCall}
+        answerCall={answerCall}
+        declineCall={declineCall}
+      />
+      <CallStatus
+        isCalling={isCalling}
+        targetUser={targetUser}
+        cancelCall={cancelCall}
+      />
     </div>
   );
 };

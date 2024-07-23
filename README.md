@@ -69,8 +69,8 @@ The development workflow involved creating feature branches and opening Pull Req
 
 1.  **[Chore(part-1): Implement UI](https://github.com/wilfredonoyola/connect-us/pull/1)**
 2.  **[Chore(part-2): API integrations](https://github.com/wilfredonoyola/connect-us/pull/2)**
-3.  **[Chore(part-3): Real time integrations](Need to test more)**
-4.  **[Chore(part-4): Tests and documentation] (Pending)**
+3.  **Chore(part-3): Real-time integrations](Need to test more)**
+4.  **Chore(part-4): Tests and documentation] (Pending)**
 
 ## Technologies Used
 

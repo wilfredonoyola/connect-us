@@ -1,12 +1,17 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 
 const UserProfile: React.FC = () => {
   const router = useRouter();
-  const nickname = localStorage.getItem('nickname');
-  const avatar = localStorage.getItem('avatar');
+  const [nickname, setNickname] = useState<string | null>(null);
+  const [avatar, setAvatar] = useState<string | null>(null);
+
+  useEffect(() => {
+    setNickname(localStorage.getItem('nickname'));
+    setAvatar(localStorage.getItem('avatar'));
+  }, []);
 
   const handleLogout = () => {
     localStorage.removeItem('nickname');

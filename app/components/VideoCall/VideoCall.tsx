@@ -9,9 +9,10 @@ import CallStatus from '../CallStatus';
 
 interface VideoCallProps {
   targetUser: { peerId: string; nickname: string; avatar: string };
+  loggedInUser: { id: string; nickname: string; avatar: string };
 }
 
-const VideoCall: React.FC<VideoCallProps> = ({ targetUser }) => {
+const VideoCall: React.FC<VideoCallProps> = ({ targetUser, loggedInUser }) => {
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
   const [incomingCall, setIncomingCall] = useState<MediaConnection | null>(null);
@@ -26,7 +27,7 @@ const VideoCall: React.FC<VideoCallProps> = ({ targetUser }) => {
 
   useEffect(() => {
     if (!peerInstance.current) {
-      peerInstance.current = new Peer();
+      peerInstance.current = new Peer(loggedInUser.id);
     }
 
     peerInstance.current.on('open', (id) => {
@@ -40,7 +41,7 @@ const VideoCall: React.FC<VideoCallProps> = ({ targetUser }) => {
     return () => {
       peerInstance.current?.destroy();
     };
-  }, []);
+  }, [loggedInUser.id]);
 
   const getUserMedia = async (constraints: MediaStreamConstraints): Promise<MediaStream | null> => {
     try {
@@ -157,12 +158,12 @@ const VideoCall: React.FC<VideoCallProps> = ({ targetUser }) => {
   return (
     <div className="fixed inset-0 bg-black flex flex-col items-center justify-center p-12">
       <div className="relative w-full h-full flex gap-4">
-        <div className="flex-1 flex items-center  justify-center">
+        <div className="flex-1 flex items-center justify-center">
           <VideoStream
             stream={stream}
             isLocal={true}
             isCameraOn={isCameraOn}
-            avatar={targetUser.avatar}
+            avatar={loggedInUser.avatar}
             nickname="You"
           />
         </div>

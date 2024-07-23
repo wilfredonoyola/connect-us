@@ -42,6 +42,10 @@ const handler = (req: NextApiRequest, res: NextApiResponse & { socket: any }) =>
         }
       });
 
+      socket.on('callUser', ({ targetUserId, caller }) => {
+        io.to(targetUserId).emit('incomingCall', caller);
+      });
+
       socket.on('disconnect', () => {
         delete users[socket.id];
         io.emit('users', Object.values(users));

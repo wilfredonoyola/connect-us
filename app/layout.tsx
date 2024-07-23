@@ -47,6 +47,12 @@ export default function RootLayout({
     }
   }, [router]);
 
+  useEffect(() => {
+    if (isLoggedIn()) {
+      router.push('/home');
+    }
+  }, [router]);
+
   return (
     <html lang="en">
       <body className={inter.className}>{children}</body>

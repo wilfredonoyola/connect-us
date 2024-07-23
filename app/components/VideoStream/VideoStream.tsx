@@ -1,4 +1,6 @@
-import React, { useRef, useEffect } from 'react';
+'use client';
+
+import React, { useEffect, useRef } from 'react';
 
 interface VideoStreamProps {
   stream: MediaStream | null;
@@ -12,24 +14,21 @@ const VideoStream: React.FC<VideoStreamProps> = ({ stream, isLocal, isCameraOn, 
   const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
-    if (stream && videoRef.current) {
+    if (videoRef.current && stream) {
       videoRef.current.srcObject = stream;
     }
   }, [stream]);
 
   return (
-    <div className="relative w-full h-full bg-gray-200 rounded-lg overflow-hidden flex items-center justify-center">
-      {isCameraOn && stream ? (
+    <div className="relative w-full h-full bg-gray-200 rounded-lg overflow-hidden">
+      {isCameraOn ? (
         <video ref={videoRef} autoPlay muted={isLocal} className="w-full h-full object-cover" />
       ) : (
-        <div className="flex flex-col items-center">
-          <img src={avatar} alt={`${nickname}'s Avatar`} className="w-24 h-24 rounded-full mb-4" />
-          <p className="text-gray-500">Camera is off</p>
+        <div className="flex items-center justify-center w-full h-full">
+          <img src={avatar} alt="User Avatar" className="w-24 h-24 rounded-full" />
         </div>
       )}
-      <div className="absolute top-2 left-2 bg-black bg-opacity-50 text-white p-2 rounded">
-        {isLocal ? 'You' : nickname}
-      </div>
+      <div className="absolute top-2 left-2 bg-black bg-opacity-50 text-white p-2 rounded">{nickname}</div>
     </div>
   );
 };

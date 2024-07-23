@@ -52,6 +52,16 @@ const UserList: React.FC = () => {
   }, [router]);
 
   const handleCall = (user: User) => {
+    const nickname = getNickname();
+    const avatar = getAvatar();
+    socket.emit('callUser', {
+      targetUserId: user.id,
+      caller: {
+        id: socket.id,
+        nickname,
+        avatar,
+      },
+    });
     router.push(`/room/${user.id}`);
   };
 

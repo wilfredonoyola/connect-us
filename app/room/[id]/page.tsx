@@ -3,12 +3,11 @@
 import React from 'react';
 import { useParams } from 'next/navigation';
 import VideoCall from 'app/components/VideoCall';
-// import Chat from 'app/components/Chat';
 import UserProfile from 'app/components/UserProfile';
 
-
 const RoomPage: React.FC = () => {
-  const { id } = useParams();
+  const params = useParams();
+  const id = params?.id as string;
 
   if (!id) {
     return <div>Loading...</div>;
@@ -16,7 +15,7 @@ const RoomPage: React.FC = () => {
 
   // Dummy data for the target user
   const targetUser = {
-    peerId: id as string,
+    peerId: id,
     nickname: 'User',  // You can fetch or pass the real nickname here
     avatar: 'https://randomuser.me/api/portraits/men/1.jpg'  // You can fetch or pass the real avatar URL here
   };
